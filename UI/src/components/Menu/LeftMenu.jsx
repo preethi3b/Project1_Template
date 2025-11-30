@@ -17,6 +17,7 @@ import {
   RiPieChartLine,
   RiUserAddLine,
   RiToolsLine,
+  RiAdminLine,
 } from "react-icons/ri";
 import { Outlet, Link as RouterLink, useLocation } from "react-router-dom";
 import { getLocalStorageItem } from "../../utils/localStoragesHelper";
@@ -39,22 +40,28 @@ const LeftMenu = () => {
 
   const storedUser = getLocalStorageItem("user");
 
-  const menuItems =
-    storedUser?.role === "user"
-      ? [
-          { icon: RiBillLine, label: "Invoice", href: "/invoice" },
-          { icon: RiToolsLine, label: "Service", href: "/service" },
-        ]
-      : [
-          { icon: FiHome, label: "Dashboard", href: "/dashboard" },
-          { icon: RiBillLine, label: "Invoice", href: "/invoice" },
-          { icon: RiToolsLine, label: "Service", href: "/service" },
-          { icon: FiBox, label: "Stock", href: "/stock" },
-          { icon: FiTruck, label: "Supplier", href: "/supplier" },
-          { icon: RiMoneyDollarCircleLine, label: "Expense", href: "/expense" },
-          { icon: RiPieChartLine, label: "Report", href: "/report" },
-          { icon: RiUserAddLine, label: "Register", href: "/register" },
-        ];
+  const baseMenu = [
+    { icon: FiHome, label: "Dashboard", href: "/dashboard" },
+    { icon: RiBillLine, label: "Invoice", href: "/invoice" },
+    { icon: RiToolsLine, label: "Service", href: "/service" },
+    { icon: FiBox, label: "Stock", href: "/stock" },
+    { icon: FiTruck, label: "Supplier", href: "/supplier" },
+    { icon: RiMoneyDollarCircleLine, label: "Expense", href: "/expense" },
+    { icon: RiPieChartLine, label: "Report", href: "/report" },
+    { icon: RiUserAddLine, label: "Register", href: "/register" },
+  ];
+
+  let menuItems = [...baseMenu];
+
+  if (storedUser?.role === "superadmin") {
+    menuItems.unshift({ icon: RiAdminLine, label: "Admin", href: "/admin" });
+  } else if (storedUser?.role === "admin") {
+    menuItems = baseMenu.filter((item) => item.label !== "Admin");
+  } else if (storedUser?.role === "user") {
+    menuItems = baseMenu.filter((item) =>
+      ["Invoice", "Service"].includes(item.label)
+    );
+  }
 
   const showText = isMobile ? isMobileMenuOpen : isMenuOpen;
 

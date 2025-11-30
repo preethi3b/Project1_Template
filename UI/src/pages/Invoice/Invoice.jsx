@@ -528,68 +528,66 @@ const Invoice = () => {
         </Box>
       </Card>
 
-      <Box
-        position="fixed"
-        bottom="20px"
-        right="30px"
-        bg="white"
-        border="1px solid #E5E7EB"
-        borderRadius="xl"
-        boxShadow="0 -2px 10px rgba(98, 93, 240, 0.08)"
-        w="360px"
-        p={5}
-        zIndex={99}
-        className="rounded-xl bg-[#fafbff] shadow-sm"
-      >
-        {/* Sub Total */}
-        <Flex justify="space-between" align="center" mb={2}>
-          <Text fontWeight="semibold" color="gray.700">
-            Total
-          </Text>
-          <Text className="footer-value">
-            ₹{Number(totalAmount || 0).toFixed(2)}
-          </Text>
-        </Flex>
-
-        {/* Discount */}
-        <Flex justify="space-between" align="center" mb={3}>
-          <Text color="gray.600">Discount</Text>
-          <Flex align="center" gap={2}>
-            <Input
-              type="number"
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
-              width="70px"
-              height="28px"
-              fontSize="sm"
-            />
-            <Text color="gray.500">%</Text>
-            <Text color="gray.700">₹{Number(discount || 0).toFixed(2)}</Text>
-          </Flex>
-        </Flex>
-
-        <Divider my={3} />
-
-        {/* Total */}
-        <Flex justify="space-between" align="center" mb={2}>
-          <Text fontWeight="semibold" color="gray.700">
-            Net Amount ( ₹ )
-          </Text>
-          <Text fontSize="md" fontWeight="bold" color="#012AF6">
-            ₹{Number(netAmount).toFixed(2)}
-          </Text>
-        </Flex>
-
-        {/* Button */}
-        <Button
-          className="btn-primary"
-          size="sm"
-          onClick={handleSave}
-          isDisabled={rows.length === 0}
+      <Flex justify="flex-end" mt={8}>
+        <Box
+          bg="white"
+          border="1px solid #E5E7EB"
+          borderRadius="xl"
+          boxShadow="0 -2px 10px rgba(98, 93, 240, 0.08)"
+          w={{ base: "100%", md: "360px" }}
+          p={5}
+          className="rounded-xl bg-[#fafbff] shadow-sm"
         >
-          Print Invoice
-        </Button>
-      </Box>
+          {/* Sub Total */}
+          <Flex justify="space-between" align="center" mb={2}>
+            <Text fontWeight="semibold" color="gray.700">
+              Total
+            </Text>
+            <Text className="footer-value">
+              ₹{Number(totalAmount || 0).toFixed(2)}
+            </Text>
+          </Flex>
+
+          {/* Discount */}
+          <Flex justify="space-between" align="center" mb={3}>
+            <Text color="gray.600">Discount</Text>
+            <Flex align="center" gap={2}>
+              <Input
+                type="number"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                width="70px"
+                height="28px"
+                fontSize="sm"
+              />
+              <Text color="gray.500">%</Text>
+              <Text color="gray.700">₹{Number(discount || 0).toFixed(2)}</Text>
+            </Flex>
+          </Flex>
+
+          <Divider my={3} />
+
+          {/* Total */}
+          <Flex justify="space-between" align="center" mb={2}>
+            <Text fontWeight="semibold" color="gray.700">
+              Net Amount ( ₹ )
+            </Text>
+            <Text fontSize="md" fontWeight="bold" color="#012AF6">
+              ₹{Number(netAmount).toFixed(2)}
+            </Text>
+          </Flex>
+
+          {/* Button */}
+          <Button
+            className="btn-primary"
+            size="sm"
+            onClick={handleSave}
+            isDisabled={rows.length === 0}
+          >
+            Print Invoice
+          </Button>
+        </Box>
+      </Flex>
     </Box>
   );
 };
