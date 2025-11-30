@@ -32,7 +32,7 @@ import {
   HStack,
   Select,
 } from "@chakra-ui/react";
-import { FiTrash2, FiPlus, FiEye, FiTrash } from "react-icons/fi";
+import { FiPlus, FiEye, FiTrash, FiInfo } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { showToast } from "../../utils/toast";
@@ -46,15 +46,20 @@ const Stock = () => {
     onOpen: onDeleteOpen,
     onClose: onDeleteClose,
   } = useDisclosure();
-
-  const modalSize = useBreakpointValue({ base: "full", md: "lg" });
+  const {
+    isOpen: isItemsOpen,
+    onOpen: onItemsOpen,
+    onClose: onItemsClose,
+  } = useDisclosure();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState([]);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsData, setDetailsData] = useState([]);
   const [selectedStock, setSelectedStock] = useState(null);
-
+  const [selectedStockId, setSelectedStockId] = useState([]);
   const [newItem, setNewItem] = useState({
     productId: "",
     name: "",
@@ -64,6 +69,16 @@ const Stock = () => {
     qty: "",
     gst: "",
     addQty: "",
+    bikeModel: "",
+    color: "",
+  });
+  const [detailItem, setDetailItem] = useState({
+    engineNo: "",
+    batteryNo: "",
+    pcbNo: "",
+    chassisNo: "",
+    chargerSerialNo: "",
+    hsnNo: "",
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -71,11 +86,6 @@ const Stock = () => {
   const [loading, setLoading] = useState(false);
 
   const itemsPerPage = 10;
-
-  // Reusable border colors
-  const borderColor = useColorModeValue("gray.200", "gray.600");
-  const tableBorderColor = "gray.200"; // #e2e8f0 equivalent in Chakra
-  const rowBorderColor = useColorModeValue("gray.100", "gray.500");
 
   useEffect(() => {
     fetchStockItems(currentPage);
@@ -118,7 +128,22 @@ const Stock = () => {
       });
     }
   };
-
+  const handleViewDetails = async (id, name) => {
+    try {
+      setSelectedStock(name);
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/stock/${id}/details`
+      );
+      setDetailsData(response.data);
+      setIsDetailsOpen(true);
+    } catch (error) {
+      showToast({
+        title: "Error",
+        description: "Failed to load stock details",
+        status: "error",
+      });
+    }
+  };
   const handleDelete = async (id) => {
     try {
       const response = await axios.delete(
@@ -154,6 +179,8 @@ const Stock = () => {
         qty: data.quantity || "",
         gst: data.gst || "",
         addQty: "",
+        bikeModel: data.bike_model || "",
+        color: data.color || "",
       });
       setIsEditing(true);
       setEditingId(id);
@@ -193,6 +220,8 @@ const Stock = () => {
         gst: newItem.gst ? parseFloat(newItem.gst) : 0,
         qty: parseInt(newItem.qty),
         addQty: parseInt(newItem.addQty) || 0,
+        bikeModel: newItem.bikeModel,
+        color: newItem.color,
       };
 
       if (isEditing) {
@@ -223,6 +252,65 @@ const Stock = () => {
     } catch (error) {
       showToast({
         title: "Error",
+        description: error.response?.data?.message || error.message,
+        status: "error",
+      });
+    }
+  };
+  const handleOpenItems = (sid, name) => {
+    setSelectedStockId(sid);
+    setSelectedStock(name);
+    setDetailItem({
+      engineNo: "",
+      batteryNo: "",
+      pcbNo: "",
+      chassisNo: "",
+      chargerSerialNo: "",
+      hsnNo: "",
+    });
+    onItemsOpen();
+  };
+
+  const handleDetailChange = (e) => {
+    const { name, value } = e.target;
+    setDetailItem((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddItem = async () => {
+    const emptyField = Object.values(detailItem).some((val) => !val);
+    if (emptyField) {
+      showToast({
+        title: "All fields are required",
+        description: "Please fill all required fields.",
+        status: "error",
+      });
+      return;
+    }
+    try {
+      const payload = {
+        stock_id: selectedStockId,
+        engine_no: detailItem.engineNo,
+        battery_no: detailItem.batteryNo,
+        pcb_no: detailItem.pcbNo,
+        chassis_no: detailItem.chassisNo,
+        charger_serial_no: detailItem.chargerSerialNo,
+        hsn_no: detailItem.hsnNo,
+      };
+
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/stock_items`,
+        payload
+      );
+      showToast({
+        title: "Added",
+        description: "Stock item details added successfully",
+        status: "success",
+      });
+
+      onItemsClose();
+    } catch (error) {
+      showToast({
+        title: "Error adding item details",
         description: error.response?.data?.message || error.message,
         status: "error",
       });
@@ -341,9 +429,25 @@ const Stock = () => {
                             aria-label="View History"
                             size="sm"
                             className="table-action-btn view"
+                            // onClick={() =>
+                            //   handleViewHistory(item.sid, item.name)
+                            // }
                             onClick={() =>
-                              handleViewHistory(item.sid, item.name)
+                              handleViewDetails(item.sid, item.name)
                             }
+                          />
+                        </Tooltip>
+                        <Tooltip
+                          label="Add item details"
+                          bg="#625DF0"
+                          color="white"
+                        >
+                          <IconButton
+                            icon={<FiPlus />}
+                            aria-label="Add Item"
+                            className="table-action-btn view"
+                            size="sm"
+                            onClick={() => handleOpenItems(item.sid, item.name)}
                           />
                         </Tooltip>
                       </Flex>
@@ -613,6 +717,63 @@ const Stock = () => {
           </ModalContent>
         </Modal>
 
+        <Modal isOpen={isItemsOpen} onClose={onItemsClose} size="md" isCentered>
+          <ModalOverlay />
+          <ModalContent className="modal-box">
+            <ModalHeader className="modal-header">
+              Add Stock Item Details – {selectedStock}
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody className="modal-body">
+              <Stack spacing={3} className="modal-form">
+                {[
+                  { label: "Engine No", name: "engineNo" },
+                  { label: "Battery No", name: "batteryNo" },
+                  { label: "PCB No", name: "pcbNo" },
+                  { label: "Chassis No", name: "chassisNo" },
+                  { label: "Charger Serial No", name: "chargerSerialNo" },
+                  { label: "HSN Number", name: "hsnNo" },
+                ].map((field) => (
+                  <FormControl key={field.name} mb={2}>
+                    <FormLabel fontFamily="Inter, sans-serif" fontWeight="500">
+                      {field.label}
+                    </FormLabel>
+                    <Input
+                      name={field.name}
+                      value={detailItem[field.name]}
+                      onChange={handleDetailChange}
+                      placeholder={`Enter ${field.label}`}
+                      fontFamily="Inter, sans-serif"
+                      borderRadius="lg"
+                      borderColor="gray.300"
+                      _hover={{
+                        borderColor: "#625DF0",
+                      }}
+                      _focus={{
+                        borderColor: "#625DF0",
+                        boxShadow: "0 0 0 1px #625DF0",
+                      }}
+                    />
+                  </FormControl>
+                ))}
+              </Stack>
+            </ModalBody>
+            <ModalFooter className="modal-footer">
+              <Button
+                variant="ghost"
+                className="btn-cancel"
+                size="sm"
+                onClick={onItemsClose}
+              >
+                Cancel
+              </Button>
+              <Button className="btn-primary" size="sm" onClick={handleAddItem}>
+                Add
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
         {/* Delete Modal */}
         <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered>
           <ModalOverlay />
@@ -697,6 +858,82 @@ const Stock = () => {
                 className="btn-primary"
                 size="sm"
                 onClick={() => setIsHistoryOpen(false)}
+              >
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Details Modal */}
+        <Modal
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          size="2xl"
+          isCentered
+          scrollBehavior="inside"
+        >
+          <ModalOverlay />
+          <ModalContent className="modal-box" maxH="80vh">
+            <ModalHeader className="modal-header">
+              Stock Details - {selectedStock}
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody className="modal-body">
+              {detailsData.length > 0 ? (
+                <Card className="table-card">
+                  <Box className="table-scroll" maxH="60vh" overflowY="auto">
+                    <Table className="table" variant="simple" size="sm">
+                      <Thead>
+                        <Tr>
+                          <Th>Date & Time</Th>
+                          <Th>Engine No</Th>
+                          <Th>Chassis No</Th>
+                          <Th>Battery No</Th>
+                          <Th>PCB No</Th>
+                          <Th>Charger Serial</Th>
+                          <Th>HSN No</Th>
+                          <Th>Status</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {detailsData.map((record, index) => (
+                          <Tr key={index}>
+                            <Td>
+                              {record.create_date
+                                ? new Date(record.create_date).toLocaleString()
+                                : "-"}
+                            </Td>
+                            <Td>{record.engine_no || "-"}</Td>
+                            <Td>{record.chassis_no || "-"}</Td>
+                            <Td>{record.battery_no || "-"}</Td>
+                            <Td>{record.pcb_no || "-"}</Td>
+                            <Td>{record.charger_serial_no || "-"}</Td>
+                            <Td>{record.hsn_no || "-"}</Td>
+                            <Td
+                              color={record.qty === 1 ? "green.600" : "red.600"}
+                              fontWeight="600"
+                            >
+                              {record.qty === 1 ? "Available" : "Sold"}
+                            </Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  </Box>
+                </Card>
+              ) : (
+                <Text textAlign="center" py={4} color="gray.500">
+                  No stock items found for this stock.
+                </Text>
+              )}
+            </ModalBody>
+            <ModalFooter className="modal-footer">
+              <Button
+                variant="ghost"
+                className="btn-cancel"
+                size="sm"
+                onClick={() => setIsDetailsOpen(false)}
               >
                 Close
               </Button>
