@@ -136,6 +136,7 @@ const Invoice = () => {
       rate: rate,
       quantity: qty,
       amount: amount,
+      stockId: selectedProduct.stockId,
     };
     setRows([...rows, newRow]);
     setSelectedProduct(null);
@@ -164,6 +165,7 @@ const Invoice = () => {
         rate: r.rate,
         quantity: r.quantity,
         amount: r.amount,
+        stockId: r.stockId,
       })),
     };
 

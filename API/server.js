@@ -727,21 +727,24 @@ app.get("/get_service_count", (req, res) => {
 
 app.get("/api/products/all", (req, res) => {
   const query = `
-    SELECT product_id AS productId, product_name AS productName, purchase_rate, rate
-    FROM stock
-    ORDER BY product_name ASC
+    SELECT 
+      s.sid AS stockId,
+      s.product_id AS productId,
+      s.product_name AS productName,
+      s.purchase_rate,
+      s.rate,
+      si.stock_id AS stockItemStockId
+    FROM stock s
+    LEFT JOIN stock_items si ON s.sid = si.stock_id
+    ORDER BY s.product_name ASC
   `;
 
   db.query(query, (err, results) => {
     if (err) {
       console.error("Database error fetching all products:", err);
-      // Ensure the client receives a proper error status
       return res.status(500).json({ error: "Internal Server Error" });
     }
 
-    // The results array will contain objects like:
-    // [{ productId: 'P001', productName: 'Item A', rate: 10.50 }, ...]
-    // This is exactly what the frontend is expecting.
     res.json(results);
   });
 });
@@ -783,6 +786,7 @@ app.post("/invoice", (req, res) => {
         // 2. Insert invoice items
         const itemValues = items.map((item) => [
           invoiceId,
+          item.stockId,
           item.productName,
           item.quantity,
           item.rate,
@@ -790,8 +794,8 @@ app.post("/invoice", (req, res) => {
         ]);
 
         const insertItemsQuery = `
-        INSERT INTO invoice_items (invoice_id, product_name, quantity, rate, amount)
-        VALUES ?`;
+       INSERT INTO invoice_items (invoice_id, stock_id, product_name, quantity, rate, amount)
+       VALUES ?`;
 
         db.query(insertItemsQuery, [itemValues], (err, itemsResult) => {
           if (err) {
