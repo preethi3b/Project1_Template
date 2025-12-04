@@ -445,9 +445,9 @@ const Service = () => {
     </head>
     <body>
       <div class="receipt-container">
-        <div class="center bold">Muthu Mobiles</div>
-        <div class="center">Uranipuram</div>
-        <div class="center">Mob:9791611603,9363230745</div>
+        <div class="center bold">${companyName}</div>
+        <div class="center">${place}</div>
+        <div class="center">${mobileNumber}</div>
         <div class="line"></div>
 
         <div class="row">
@@ -497,7 +497,7 @@ const Service = () => {
           <b>NO WARRANTY, NO GUARANTEE</b><br><br>
           <div>
             <b>Customer Signature</b> ________________________ 
-            <span style="float:right;">For. Muthu Mobiles</span>
+            <span style="float:right;">For. ${companyName}</span>
           </div>
         </div>
         <div class="line"></div>

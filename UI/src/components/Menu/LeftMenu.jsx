@@ -39,6 +39,9 @@ const LeftMenu = () => {
   } = useMenu();
 
   const storedUser = getLocalStorageItem("user");
+  const savedconfig = localStorage.getItem("companyConfig");
+  const parsed = savedconfig ? JSON.parse(savedconfig) : null;
+  const config = parsed?.value || parsed;
 
   const baseMenu = [
     { icon: FiHome, label: "Dashboard", href: "/dashboard" },
@@ -65,6 +68,9 @@ const LeftMenu = () => {
 
   const showText = isMobile ? isMobileMenuOpen : isMenuOpen;
 
+  const logo = config?.logo_url
+    ? `${import.meta.env.VITE_API_BASE_URL}${config.logo_url}`
+    : null;
   const isActiveLink = (href) =>
     location.pathname === href || location.pathname.startsWith(href + "/");
 

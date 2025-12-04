@@ -198,7 +198,12 @@ const Invoice = () => {
       showToast({ title: "Error", description: err.message, status: "error" });
     }
   };
-
+  const savedconfig = localStorage.getItem("companyConfig");
+  const parsed = savedconfig ? JSON.parse(savedconfig) : null;
+  const config = parsed?.value || parsed;
+  const companyName = config?.name || "Company Name";
+  const place = config?.address || "";
+  const phoneNumber = config?.phone || "";
   const printReceipt = (data) => {
     const {
       customerName,
@@ -222,9 +227,9 @@ const Invoice = () => {
           justify-content: space-between;
         }
       </style></head><body>
-      <div style="text-align:center;font-weight:bold">MUTHU MOBILES</div>
-      <div style="text-align:center">Uranipuram</div>
-      <div style="text-align:center">Mob:9791611603,9363230745</div>
+      <div style="text-align:center;font-weight:bold">${companyName} </div>
+      <div style="text-align:center">${place}</div>
+      <div style="text-align:center">${phoneNumber}</div>
       <div class="line"></div>
        <div class="row">
           <div><b>Bill No:</b> ${billNo}</div>
@@ -232,7 +237,7 @@ const Invoice = () => {
         </div>
         <div class="row">
           <div><b>Customer:</b> ${customerName}</div>
-          <div><b>Mobile No:</b> ${mobileNumber}</div>
+          <div><b>Mobile No:</b> ${phoneNumber}</div>
         </div>
       <div class="line"></div>
       <table><tr><td><b>S.No</b></td><td><b>Item</b></td><td><b>Rate</b></td><td><b>Qty</b></td><td><b>Amt</b></td></tr>
@@ -265,8 +270,8 @@ const Invoice = () => {
         ❖ மாறிய பொருள்களுக்கு மற்றும் தாமதமான பணியாளர்களுக்கு சிறிய தாமதம் ஏற்படலாம்.<br><br>
         ❖ பில் கொடுத்த பிறகே மட்டும் செல்போன் திரும்பப் பெறப்படும்.<br><br>
         ❖ Display, No Network IC, Touch Problem, Water Problem – <b>NO WARRANTY, NO CARENTY</b><br><br>
-        <div><b>Customer Signature</b> ________________________ 
-        <span style="float:right;">For. Muthu Mobiles</span></div>
+        <><b>Customer Signature</b> ________________________ 
+        <span style="float:right;">For. ${companyName} </span></div>
       </div>
       <div class="line"></div>
       <div style="text-align:center">Thank you! Visit Again</div>

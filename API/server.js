@@ -5,11 +5,13 @@ const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const multer = require("multer");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
-
+app.use("/uploads", express.static("uploads"));
 // ----------------------------------
 // MYSQL CONNECTION (AIVEN SSL)
 // ----------------------------------
@@ -33,6 +35,77 @@ db.connect((err) => {
   }
 });
 
+// Multer storage (stores images in /uploads folder)
+const storage = multer.diskStorage({
+  destination: "uploads/",
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+const upload = multer({ storage });
+
+// ----------------------------------
+// 🔥 SAVE or UPDATE CONFIG (NEW VERSION)
+// ----------------------------------
+app.post("/config", upload.single("logo"), (req, res) => {
+  try {
+    const { name, address, phone, email, gst } = req.body;
+    const logo_url = req.file ? "/uploads/" + req.file.filename : null;
+
+    if (!name || !address || !phone || !email || !gst) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    // 🔍 Check existing config
+    db.query("SELECT id FROM config LIMIT 1", (err, result) => {
+      if (err) return res.status(500).json({ error: "Database error" });
+
+      if (result.length > 0) {
+        // 🔁 UPDATE EXISTING
+        const id = result[0].id;
+        const updateQuery = `UPDATE config SET name=?, address=?, phone=?, email=?, gst=?, updated_at=NOW() ${
+          logo_url ? ", logo_url=?" : ""
+        } WHERE id=?`;
+
+        const params = logo_url
+          ? [name, address, phone, email, gst, logo_url, id]
+          : [name, address, phone, email, gst, id];
+
+        db.query(updateQuery, params, (err) => {
+          if (err) return res.status(500).json({ error: "Database error" });
+          return res.json({
+            message: "Configuration updated successfully",
+            logo_url,
+          });
+        });
+      } else {
+        // ➕ FIRST TIME INSERT
+        db.query(
+          "INSERT INTO config (name, address, phone, email, gst, logo_url) VALUES (?,?,?,?,?,?)",
+          [name, address, phone, email, gst, logo_url],
+          (err) => {
+            if (err) return res.status(500).json({ error: "Database error" });
+            return res
+              .status(201)
+              .json({ message: "Configuration saved successfully", logo_url });
+          }
+        );
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ----------------------------------
+// 🔥 FETCH CONFIG
+// ----------------------------------
+app.get("/config", (req, res) => {
+  db.query("SELECT * FROM config LIMIT 1", (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    return res.json(result[0] || null);
+  });
+});
 // ----------------------------------
 // REGISTER USER
 // ----------------------------------
