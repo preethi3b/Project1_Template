@@ -13,6 +13,10 @@ import {
   Tr,
   useDisclosure,
   Modal,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   ModalOverlay,
   ModalContent,
   ModalHeader,
@@ -35,12 +39,22 @@ import {
   SimpleGrid,
   useToast,
   Text,
+  VStack,
   Spinner,
 } from "@chakra-ui/react";
 import { useState, useEffect, useRef } from "react";
-import { FiEye, FiTrash2, FiSearch } from "react-icons/fi";
+import {
+  FiEye,
+  FiTrash2,
+  FiSearch,
+  FiFilter,
+  FiDownload,
+} from "react-icons/fi";
 import axios from "axios";
 import { showToast } from "../../utils/toast";
+import { generatePDF } from "../../components/DownloadHelper/DownloadPDF";
+import { generateXLSX } from "../../components/DownloadHelper/DownloadXLSX";
+
 const Report = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -71,8 +85,14 @@ const Report = () => {
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [invoiceDiscount, setInvoiceDiscount] = useState(0);
   const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   const [loading, setLoading] = useState(false); // Spinner state
+  const [isRightPanelOpen, setRightPanelOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showDailyReport, setShowDailyReport] = useState(false);
+  const [sumAmount, setSumAmount] = useState(0);
 
   const cardBg = useColorModeValue("white", "gray.700");
   const tableBg = useColorModeValue("white", "gray.800");
@@ -81,6 +101,22 @@ const Report = () => {
   useEffect(() => {
     fetchInvoices();
   }, []);
+
+  useEffect(() => {
+    const sum = invoiceData.reduce(
+      (acc, row) => acc + Number(row.amount || 0),
+      0
+    );
+    setSumAmount(sum);
+  }, [invoiceData]);
+
+  const handleDownloadPDF = () => {
+    generatePDF(invoiceData, sumAmount);
+  };
+
+  const handleDownloadXLSX = () => {
+    generateXLSX(invoiceData, sumAmount);
+  };
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -209,26 +245,80 @@ const Report = () => {
       setLoading(false);
     }
   };
+  // const handleOpen = async () => {
+  //   setLoading(true);
+  //   try {
+  //     // Get today's date in YYYY-MM-DD format
+  //     const today = new Date();
+  //     const yyyy = today.getFullYear();
+  //     const mm = String(today.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+  //     const dd = String(today.getDate()).padStart(2, "0");
+  //     const currentDate = `${yyyy}-${mm}-${dd}`;
+
+  //     // Fetch daily report with current date
+  //     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/daily_report?startDate=${currentDate}`);
+  //     const data = await response.json();
+
+  //     setReport(data);
+  //     onOpen();
+  //   } catch (error) {
+  //     console.error("Error fetching daily report:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // const handleView = async (invoiceNo) => {
+  //   setLoading(true);
+  //   try {
+  //     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/invoice-rep/${invoiceNo}`);
+  //     if (response.data.length === 0) {
+  //       setInvoiceItems([]);
+  //       setInvoiceDiscount(0);
+  //       setInvoiceTotal(0); // Reset total
+  //     } else {
+  //       setInvoiceItems(response.data);
+  //       const firstItem = response.data[0];
+  //       const discount = parseFloat(firstItem?.discount) || 0;
+  //       const total = parseFloat(firstItem?.total) || 0;
+
+  //       // Set values
+  //       setInvoiceDiscount(discount);
+  //       setInvoiceTotal(total - discount);
+  //       onReportOpen();
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // Helper function to calculate subtotal
+
   const handleOpen = async () => {
     setLoading(true);
     try {
-      // Get today's date in YYYY-MM-DD format
       const today = new Date();
       const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
       const dd = String(today.getDate()).padStart(2, "0");
       const currentDate = `${yyyy}-${mm}-${dd}`;
 
-      // Fetch daily report with current date
       const response = await fetch(
         `${
           import.meta.env.VITE_API_BASE_URL
         }/daily_report?startDate=${currentDate}`
       );
+
       const data = await response.json();
 
       setReport(data);
-      onOpen();
+
+      // NEW BEHAVIOR
+      setShowDailyReport(true); // show daily report panel
+      setRightPanelOpen(true); // open right panel
+      setSelectedInvoice(null); // remove invoice view
     } catch (error) {
       console.error("Error fetching daily report:", error);
     } finally {
@@ -242,20 +332,23 @@ const Report = () => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/invoice-rep/${invoiceNo}`
       );
-      if (response.data.length === 0) {
-        setInvoiceItems([]);
-        setInvoiceDiscount(0);
-        setInvoiceTotal(0); // Reset total
-      } else {
-        setInvoiceItems(response.data);
-        const firstItem = response.data[0];
-        const discount = parseFloat(firstItem?.discount) || 0;
-        const total = parseFloat(firstItem?.total) || 0;
 
-        // Set values
+      if (response.data.length > 0) {
+        setSelectedInvoice({
+          invoiceNo,
+          customerName: response.data[0].customer_name,
+          mobile: response.data[0].mobile_number,
+        });
+
+        setInvoiceItems(response.data);
+
+        const discount = parseFloat(response.data[0].discount || 0);
+        const total = parseFloat(response.data[0].total || 0);
+
         setInvoiceDiscount(discount);
         setInvoiceTotal(total - discount);
-        onReportOpen();
+
+        setRightPanelOpen(true);
       }
     } catch (err) {
       console.error(err);
@@ -264,7 +357,6 @@ const Report = () => {
     }
   };
 
-  // Helper function to calculate subtotal
   const calculateSubtotal = () => {
     // Sum the 'amount' field from all items, converting to number
     return invoiceItems.reduce(
@@ -277,113 +369,221 @@ const Report = () => {
 
   // Convert numerical values to fixed two decimal strings for display
   const formatCurrency = (value) => `₹${Number(value).toFixed(2)}`;
-
   return (
     <>
-      {loading ? (
+      {/* LOADING OVERLAY */}
+      {loading && (
         <Box className="loading-overlay">
-          <Spinner size="xl" color="#625DF0" thickness="4px" mb={2} />
-          <Text className="loading-text">
-            Retrieving records, please wait...
-          </Text>
+          <Spinner size="xl" color="#625DF0" />
+          <Text>Retrieving records, please wait...</Text>
         </Box>
-      ) : (
-        <Box overflow="hidden">
-          {/* Page Header */}
-          <Flex className="page-header">
-            <Text className="page-title">Report</Text>
-            <Button className="btn-primary" size="sm" onClick={handleOpen}>
-              Daily Report
-            </Button>
+      )}
+
+      {/* MAIN LAYOUT (FULL PAGE) */}
+      <Flex height="100vh" overflow="hidden" bg="gray.50">
+        {/* ===========================
+          LEFT SIDE (Filters + Table)
+      ============================ */}
+        <Box
+          width={isRightPanelOpen ? "420px" : "100%"}
+          minWidth={isRightPanelOpen ? "420px" : "100%"}
+          maxWidth={isRightPanelOpen ? "420px" : "100%"}
+          height="100%"
+          overflowY="auto"
+          transition="all 0.3s ease"
+          p={4}
+          bg="white"
+          borderRight={isRightPanelOpen ? "1px solid #e5e7eb" : "none"}
+        >
+          {/* HEADER + FILTER BUTTON */}
+          <Flex justify="space-between" align="center" mb={4}>
+            <Text fontSize="xl" fontWeight="600">
+              Report
+            </Text>
+
+            {/* FILTER BUTTON LIKE ZOHO */}
+            <Box position="relative">
+              <Flex justify="flex-end" align="center" gap={3}>
+                {/* DOWNLOAD BUTTON */}
+                <Menu>
+                  <MenuButton
+                    as={Button}
+                    leftIcon={<FiDownload />}
+                    size="sm"
+                    bg="#E0F2FE"
+                    color="#0369A1"
+                    borderRadius="md"
+                    _hover={{ bg: "#BAE6FD" }}
+                  >
+                    Download
+                  </MenuButton>
+
+                  <MenuList>
+                    <MenuItem onClick={() => handleDownloadPDF()}>
+                      PDF Format
+                    </MenuItem>
+                    <MenuItem onClick={() => handleDownloadXLSX()}>
+                      XLSX Format
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+
+                {/* EXISTING FILTER BUTTON */}
+                <Button
+                  leftIcon={<FiFilter size={18} />}
+                  size="sm"
+                  bg="#EEF2FF"
+                  color="#4338CA"
+                  onClick={() => setShowFilterMenu(!showFilterMenu)}
+                >
+                  Filter
+                </Button>
+              </Flex>
+
+              {/* FILTER DROPDOWN MENU */}
+              {showFilterMenu && (
+                <Box
+                  position="absolute"
+                  right="0"
+                  mt={2}
+                  w="260px"
+                  bg="white"
+                  boxShadow="lg"
+                  p={4}
+                  borderRadius="md"
+                  border="1px solid #e5e7eb"
+                  zIndex={20}
+                >
+                  <Text fontWeight="600" mb={2}>
+                    Filters
+                  </Text>
+
+                  <VStack spacing={3} align="stretch">
+                    <Input
+                      type="date"
+                      size="sm"
+                      value={formData.startDate || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, startDate: e.target.value })
+                      }
+                    />
+
+                    <Input
+                      type="date"
+                      size="sm"
+                      value={formData.endDate || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, endDate: e.target.value })
+                      }
+                    />
+
+                    <Select
+                      size="sm"
+                      value={formData.type || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, type: e.target.value })
+                      }
+                    >
+                      <option value="">Select Type</option>
+                      <option value="invoice">Invoice</option>
+                      <option value="service">Service</option>
+                    </Select>
+
+                    <Input
+                      size="sm"
+                      placeholder="Total Amount"
+                      isReadOnly
+                      value={services}
+                    />
+
+                    <Button
+                      size="sm"
+                      colorScheme="purple"
+                      leftIcon={<FiSearch />}
+                      onClick={() => {
+                        handeleSearch();
+                        setShowFilterMenu(false);
+                      }}
+                    >
+                      Search
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      colorScheme="blue"
+                      onClick={() => {
+                        handleOpen();
+                        setShowFilterMenu(false);
+                      }}
+                    >
+                      Daily Report
+                    </Button>
+                  </VStack>
+                </Box>
+              )}
+            </Box>
           </Flex>
 
-          {/* Filter card */}
-          <Card
-            bg={useColorModeValue("white", "gray.800")}
-            borderRadius="xl"
-            boxShadow="sm"
-            borderWidth="1px"
-            borderColor={borderColor}
-            mb={6}
-          >
-            <CardBody>
-              <SimpleGrid
-                columns={{ base: 1, sm: 2, md: 3, lg: 5 }}
-                spacing={4}
-              >
-                <Input
-                  type="date"
-                  size="sm"
-                  value={formData.startDate || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
-                  }
-                  placeholder="Start Date"
-                />
-                <Input
-                  type="date"
-                  size="sm"
-                  value={formData.endDate || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
-                  }
-                  placeholder="End Date"
-                />
-                <Select
-                  placeholder="Select Type"
-                  size="sm"
-                  value={formData.type || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, type: e.target.value })
-                  }
-                >
-                  <option value="invoice">Invoice</option>
-                  <option value="service">Service</option>
-                </Select>
-                <Input
-                  isReadOnly
-                  size="sm"
-                  value={services}
-                  placeholder="Total Amount"
-                />
-                <Button
-                  leftIcon={<FiSearch />}
-                  onClick={handeleSearch}
-                  className="btn-primary"
-                  size="sm"
-                  gap={5}
-                >
-                  Search
-                </Button>
-              </SimpleGrid>
-            </CardBody>
-          </Card>
-
-          {/* Table card */}
-          <Card className="table-card">
-            <CardHeader borderBottomWidth="1px" borderColor={borderColor}>
-              <Flex justify="space-between" align="center">
-                <Text color={"black"} fontWeight={500}>
-                  {formData.type === "service"
-                    ? "Recent Services"
-                    : "Recent Invoices"}
-                </Text>
-              </Flex>
+          {/* =======================
+            RECENT INVOICES TABLE
+        ======================== */}
+          <Card>
+            <CardHeader borderBottomWidth="1px" borderColor="gray.200">
+              <Text fontWeight="600">Recent Invoices</Text>
             </CardHeader>
 
-            <CardBody px={0} pb={0}>
-              <Box className="table-scroll">
-                <Table className="table" size="sm">
-                  <Thead>
-                    {formData.type === "service" ? (
-                      <Tr>
-                        <Th>Service No</Th>
-                        <Th>Customer</Th>
-                        <Th>Issue</Th>
-                        <Th className="text-right">Amount</Th>
-                        <Th>Date</Th>
-                      </Tr>
-                    ) : (
+            <CardBody px={0}>
+              <Box>
+                {/* WHEN RIGHT PANEL OPEN → SHOW COMPACT LIST */}
+                {isRightPanelOpen ? (
+                  <Table size="sm">
+                    <Tbody>
+                      {invoiceData.map((item) => (
+                        <Tr
+                          key={item.invoiceNo}
+                          onClick={() => handleView(item.invoiceNo)}
+                          style={{
+                            cursor: "pointer",
+                            background:
+                              selectedInvoice?.invoiceNo === item.invoiceNo
+                                ? "#eef2ff"
+                                : "transparent",
+                            borderLeft:
+                              selectedInvoice?.invoiceNo === item.invoiceNo
+                                ? "3px solid #4f46e5"
+                                : "3px solid transparent",
+                          }}
+                        >
+                          <Td>
+                            <Text
+                              fontWeight="600"
+                              fontSize="sm"
+                              color="blue.600"
+                            >
+                              {item.customerName}
+                            </Text>
+
+                            <Flex justify="space-between" mt={1}>
+                              <Text fontSize="xs" color="gray.600">
+                                {item.invoiceNo}
+                              </Text>
+                              <Text fontSize="sm" fontWeight="600">
+                                ₹{item.amount}
+                              </Text>
+                            </Flex>
+
+                            <Text fontSize="xs" color="gray.500">
+                              {item.cre_date}
+                            </Text>
+                          </Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                ) : (
+                  /* FULL TABLE WHEN RIGHT PANEL CLOSED */
+                  <Table size="sm">
+                    <Thead>
                       <Tr>
                         <Th>Invoice No</Th>
                         <Th>Name</Th>
@@ -392,221 +592,168 @@ const Report = () => {
                         <Th>Discount</Th>
                         <Th>Received</Th>
                         <Th>Date</Th>
-                        <Th>Action</Th>
                       </Tr>
-                    )}
-                  </Thead>
+                    </Thead>
 
-                  <Tbody>
-                    {(formData.type === "service"
-                      ? serviceData
-                      : invoiceData
-                    ).map((item, idx) => (
-                      <Tr key={idx}>
-                        {formData.type === "service" ? (
-                          <>
-                            <Td>{item.service_no}</Td>
-                            <Td>{item.customer_name}</Td>
-                            <Td maxW="200px" isTruncated>
-                              {item.issue_details}
-                            </Td>
-                            <Td>₹{item.amount}</Td>
-                            <Td>{item.delivery_date}</Td>
-                          </>
-                        ) : (
-                          <>
-                            <Td>{item.invoiceNo}</Td>
-                            <Td>{item.customerName}</Td>
-                            <Td>{item.mobileNumber}</Td>
-                            <Td>₹{item.amount}</Td>
-                            <Td>{item.discount}</Td>
-                            <Td>{item.total}</Td>
-                            <Td>{item.cre_date}</Td>
+                    <Tbody>
+                      {invoiceData.map((item) => (
+                        <Tr key={item.invoiceNo}>
+                          <Td
+                            onClick={() => handleView(item.invoiceNo)}
+                            style={{ cursor: "pointer", color: "#4f46e5" }}
+                          >
+                            {item.invoiceNo}
+                          </Td>
 
-                            <Td>
-                              <Flex>
-                                <Tooltip
-                                  label="Preview"
-                                  bg="#625DF0"
-                                  color="white"
-                                >
-                                  <IconButton
-                                    icon={<FiEye />}
-                                    aria-label="View"
-                                    size="sm"
-                                    className="table-action-btn view"
-                                    onClick={() => handleView(item.invoiceNo)}
-                                  />
-                                </Tooltip>
+                          <Td
+                            onClick={() => handleView(item.invoiceNo)}
+                            style={{
+                              cursor: "pointer",
+                              color: "#4f46e5",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {item.customerName}
+                          </Td>
 
-                                <Tooltip
-                                  label="Delete"
-                                  bg="#625DF0"
-                                  color="white"
-                                >
-                                  <IconButton
-                                    icon={<FiTrash2 />}
-                                    aria-label="Delete"
-                                    size="sm"
-                                    className="table-action-btn delete"
-                                    onClick={() =>
-                                      confirmDelete(item.invoiceNo)
-                                    }
-                                  />
-                                </Tooltip>
-                              </Flex>
-                            </Td>
-                          </>
-                        )}
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
+                          <Td>{item.mobileNumber}</Td>
+                          <Td>₹{item.amount}</Td>
+                          <Td>{item.discount}</Td>
+                          <Td>{item.total}</Td>
+                          <Td>{item.cre_date}</Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                )}
               </Box>
             </CardBody>
           </Card>
+        </Box>
 
-          {/* Daily Report Modal */}
-          <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
-            <ModalOverlay />
-            <ModalContent className="modal-box">
-              <ModalHeader className="modal-header">Daily Report</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody className="modal-body">
-                {report ? (
-                  <Table className="table" border="2px solid #dee1ff">
+        {/* ===========================
+          RIGHT SIDE INVOICE PREVIEW
+      ============================ */}
+        {isRightPanelOpen && (
+          <Box
+            flex="1"
+            height="100%"
+            overflowY="auto"
+            bg="white"
+            p={6}
+            borderLeft="1px solid #e5e7eb"
+          >
+            {/* TITLE BAR */}
+            <Flex justify="space-between" align="center" mb={5}>
+              <Heading size="md">Invoice #</Heading>
+              <Button size="sm" onClick={() => setRightPanelOpen(false)}>
+                Close
+              </Button>
+            </Flex>
+            {showDailyReport ? (
+              <Table variant="simple" size="sm" border="1px solid #e5e7eb">
+                <Thead>
+                  <Tr>
+                    <Th>Metric</Th>
+                    <Th isNumeric>Value</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  <Tr>
+                    <Td>Number of Invoices</Td>
+                    <Td isNumeric>{report?.invoiceCount}</Td>
+                  </Tr>
+
+                  <Tr>
+                    <Td>Total Invoice Sale</Td>
+                    <Td isNumeric>₹{report?.totalInvoiceSale}</Td>
+                  </Tr>
+
+                  <Tr>
+                    <Td>Delivered Services</Td>
+                    <Td isNumeric>{report?.deliveredCount}</Td>
+                  </Tr>
+
+                  <Tr>
+                    <Td>Total Delivered Cost</Td>
+                    <Td isNumeric>₹{report?.totalDeliveredCost}</Td>
+                  </Tr>
+
+                  <Tr>
+                    <Td>Received Services</Td>
+                    <Td isNumeric>{report?.receivedCount}</Td>
+                  </Tr>
+
+                  <Tr>
+                    <Td>Today's Total Sale</Td>
+                    <Td isNumeric>₹{report?.todayTotalSale}</Td>
+                  </Tr>
+                </Tbody>
+                <Tfoot>
+                  <Tr bg="gray.100">
+                    <Th colSpan={3}></Th>
+                    <Th fontWeight="700">₹{sumAmount}</Th>
+                    <Th></Th>
+                    <Th></Th>
+                    <Th></Th>
+                  </Tr>
+                </Tfoot>
+              </Table>
+            ) : (
+              <>
+                {/* ACTION BUTTONS */}
+                <Flex gap={3} mb={6}>
+                  <Button size="sm" colorScheme="blue">
+                    Edit
+                  </Button>
+                  <Button size="sm" colorScheme="green">
+                    Share
+                  </Button>
+                  <Button size="sm" colorScheme="purple">
+                    PDF/Print
+                  </Button>
+                  <Button size="sm" colorScheme="orange">
+                    Record Payment
+                  </Button>
+                  <Button size="sm" colorScheme="red" onClick={handleDelete}>
+                    Delete
+                  </Button>
+                </Flex>
+
+                {/* CUSTOMER DETAILS */}
+                <Heading size="sm" mb={2}>
+                  Customer
+                </Heading>
+                <Text>{selectedInvoice.customerName}</Text>
+                <Text>{selectedInvoice.mobile}</Text>
+
+                {/* PRODUCT TABLE */}
+                <Box mt={5}>
+                  <Table size="sm">
                     <Thead>
                       <Tr>
-                        <Th>Metric</Th>
-                        <Th isNumeric>Value</Th>
+                        <Th>Product</Th>
+                        <Th>Qty</Th>
+                        <Th>Rate</Th>
+                        <Th>Amount</Th>
                       </Tr>
                     </Thead>
+
                     <Tbody>
-                      <Tr>
-                        <Td>Number of Invoices</Td>
-                        <Td isNumeric>{report.invoiceCount}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>Total Invoice Sale</Td>
-                        <Td isNumeric>₹{report.totalInvoiceSale}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>Delivered Services</Td>
-                        <Td isNumeric>{report.deliveredCount}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>Total Delivered Cost</Td>
-                        <Td isNumeric>₹{report.totalDeliveredCost}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>Received Services</Td>
-                        <Td isNumeric>{report.receivedCount}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>Today's Total Sale</Td>
-                        <Td isNumeric>₹{report.todayTotalSale}</Td>
-                      </Tr>
+                      {invoiceItems.map((item, index) => (
+                        <Tr key={index}>
+                          <Td>{item.product_name}</Td>
+                          <Td>{item.quantity}</Td>
+                          <Td>{formatCurrency(item.rate)}</Td>
+                          <Td>{formatCurrency(item.amount)}</Td>
+                        </Tr>
+                      ))}
                     </Tbody>
                   </Table>
-                ) : (
-                  <p>Loading...</p>
-                )}
-              </ModalBody>
-              <ModalFooter className="modal-footer">
-                <Button className="btn-primary" size="sm" onClick={onClose}>
-                  Close
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-
-          {/* Confirm Delete AlertDialog */}
-          {/* Delete Invoice Modal */}
-          <Modal isOpen={isAlertOpen} onClose={onAlertClose} isCentered>
-            <ModalOverlay />
-            <ModalContent className="modal-box">
-              <ModalHeader className="modal-header">Delete Invoice</ModalHeader>
-              <ModalCloseButton />
-
-              <ModalBody className="modal-body">
-                <Text>
-                  Are you sure you want to delete this invoice? This action
-                  cannot be undone.
-                </Text>
-              </ModalBody>
-
-              <ModalFooter className="modal-footer">
-                <Button
-                  className="btn-cancel"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onAlertClose}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  className="btn-danger"
-                  size="sm"
-                  onClick={() => {
-                    handleDelete(selectedInvoiceNo);
-                    onAlertClose();
-                  }}
-                >
-                  Delete
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-
-          {/* Invoice Details Modal */}
-
-          <Modal
-            isOpen={isReportOpen}
-            onClose={onReportClose}
-            size="lg"
-            isCentered
-          >
-            <ModalOverlay />
-            <ModalContent className="modal-box">
-              <ModalHeader className="modal-header">
-                Invoice Details
-              </ModalHeader>
-              <ModalCloseButton />
-
-              <ModalBody className="modal-body">
-                <Box className="table-card">
-                  <Box className="table-scroll">
-                    <Table className="table">
-                      <Thead>
-                        <Tr>
-                          <Th>Product</Th>
-                          <Th className="text-right">Qty</Th>
-                          <Th className="text-right">Rate</Th>
-                          <Th className="text-right">Amount</Th>
-                        </Tr>
-                      </Thead>
-
-                      <Tbody>
-                        {invoiceItems.map((item, index) => (
-                          <Tr key={index}>
-                            <Td>{item.product_name}</Td>
-                            <Td className="text-right">{item.quantity}</Td>
-                            <Td className="text-right">
-                              {formatCurrency(item.rate)}
-                            </Td>
-                            <Td className="text-right">
-                              {formatCurrency(item.amount)}
-                            </Td>
-                          </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  </Box>
                 </Box>
 
-                {/* Totals Section */}
-                <Flex direction="column" align="flex-end" mt={4} pr={2} gap={1}>
+                {/* TOTALS */}
+                <Flex direction="column" align="flex-end" mt={6}>
                   <Flex justify="space-between" width="260px">
                     <Text>Subtotal:</Text>
                     <Text>{formatCurrency(subtotal)}</Text>
@@ -614,38 +761,26 @@ const Report = () => {
 
                   <Flex justify="space-between" width="260px">
                     <Text>Discount:</Text>
-                    <Text style={{ color: "#E53E3E" }}>
-                      - {formatCurrency(invoiceDiscount)}
-                    </Text>
+                    <Text>- {formatCurrency(invoiceDiscount)}</Text>
                   </Flex>
 
                   <Box
-                    width="260px"
                     borderTop="2px solid #cdd1f5"
+                    width="260px"
+                    mt={2}
                     pt={2}
-                    mt={1}
                   >
-                    <Flex justify="space-between" fontWeight="600">
-                      <Text>Total Amount:</Text>
+                    <Flex justify="space-between" fontWeight="700">
+                      <Text>Total:</Text>
                       <Text>{formatCurrency(invoiceTotal)}</Text>
                     </Flex>
                   </Box>
                 </Flex>
-              </ModalBody>
-
-              <ModalFooter className="modal-footer">
-                <Button
-                  className="btn-primary"
-                  size="sm"
-                  onClick={onReportClose}
-                >
-                  Close
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-        </Box>
-      )}
+              </>
+            )}
+          </Box>
+        )}
+      </Flex>
     </>
   );
 };
