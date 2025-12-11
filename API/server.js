@@ -594,6 +594,7 @@ app.get("/api/products/all", (req, res) => {
       s.product_name AS productName,
       s.purchase_rate,
       s.rate,
+      s.gst,
       si.stock_id AS stockItemStockId
     FROM stock s
     LEFT JOIN stock_items si ON s.sid = si.stock_id

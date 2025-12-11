@@ -21,6 +21,7 @@ import {
   InputLeftElement,
   Select,
   Divider,
+  Switch,
 } from "@chakra-ui/react";
 import { SearchIcon } from "@chakra-ui/icons";
 import { useEffect, useState } from "react";
@@ -37,6 +38,7 @@ const Invoice = () => {
   const toast = useToast();
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const tableBg = useColorModeValue("white", "gray.800");
+  const [isGstEnabled, setIsGstEnabled] = useState(true);
 
   const [productList, setProductList] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
@@ -50,7 +52,21 @@ const Invoice = () => {
     (sum, row) => sum + Number(row.amount || 0),
     0
   );
-  const netAmount = totalAmount - (Number(discount) || 0);
+
+  // ✅ Add GST calculation
+  const gstTotal = isGstEnabled
+    ? rows.reduce(
+        (sum, row) =>
+          sum +
+          Number(row.rate) *
+            Number(row.quantity) *
+            (Number(row.gst || 0) / 100),
+        0
+      )
+    : 0;
+
+  // ✅ Adjusted net amount
+  const netAmount = totalAmount + gstTotal - (Number(discount) || 0);
 
   useEffect(() => {
     handleGetInvoiceNo();
@@ -135,6 +151,7 @@ const Invoice = () => {
       productName: selectedProduct.productName,
       rate: rate,
       quantity: qty,
+      gst: selectedProduct?.gst,
       amount: amount,
       stockId: selectedProduct.stockId,
     };
@@ -163,6 +180,7 @@ const Invoice = () => {
         productId: r.productId,
         productName: r.productName,
         rate: r.rate,
+        gst: r.gst,
         quantity: r.quantity,
         amount: r.amount,
         stockId: r.stockId,
@@ -217,44 +235,88 @@ const Invoice = () => {
       billNo,
       date,
     } = data;
+
     const html = `
-      <html><head><style>
-      body{font-family:monospace;font-size:13px;margin:0;padding:0}
-      table{width:100%;border-collapse:collapse}
-      td{padding:2px}
-      .line{border-top:1px solid #000;margin:6px 0}
-      .conditions{font-size:12px;white-space:pre-wrap;line-height:1.4}
-       .row {
+    <html>
+    <head>
+      <style>
+        body {
+          font-family: monospace;
+          font-size: 13px;
+          margin: 0;
+          padding: 0;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        td {
+          padding: 2px;
+        }
+        .line {
+          border-top: 1px solid #000;
+          margin: 6px 0;
+        }
+        .conditions {
+          font-size: 12px;
+          white-space: pre-wrap;
+          line-height: 1.4;
+        }
+        .row {
           display: flex;
           justify-content: space-between;
         }
-      </style></head><body>
-      <div style="text-align:center;font-weight:bold">${companyName} </div>
+      </style>
+    </head>
+    <body>
+      <div style="text-align:center;font-weight:bold">${companyName}</div>
       <div style="text-align:center">${place}</div>
       <div style="text-align:center">${phoneNumber}</div>
       <div class="line"></div>
-       <div class="row">
-          <div><b>Bill No:</b> ${billNo}</div>
-          <div><b>Date:</b> ${date}</div>
-        </div>
-        <div class="row">
-          <div><b>Customer:</b> ${customerName}</div>
-          <div><b>Mobile No:</b> ${phoneNumber}</div>
-        </div>
+
+      <div class="row">
+        <div><b>Bill No:</b> ${billNo}</div>
+        <div><b>Date:</b> ${date}</div>
+      </div>
+      <div class="row">
+        <div><b>Customer:</b> ${customerName}</div>
+        <div><b>Mobile No:</b> ${mobileNumber}</div>
+      </div>
+
       <div class="line"></div>
-      <table><tr><td><b>S.No</b></td><td><b>Item</b></td><td><b>Rate</b></td><td><b>Qty</b></td><td><b>Amt</b></td></tr>
-      ${items
-        .map(
-          (i, index) =>
-            `<tr><td>${index + 1}</td><td>${i.productName}</td><td>${Number(
-              i.rate
-            ).toFixed(2)}</td><td>${i.quantity}</td><td>${Number(
-              i.amount
-            ).toFixed(2)}</td></tr>`
-        )
-        .join("")}
+
+      <table>
+        <tr>
+          <td><b>S.No</b></td>
+          <td><b>Item</b></td>
+          <td><b>Rate</b></td>
+          <td><b>Qty</b></td>
+          <td><b>GST%</b></td>
+          <td><b>GST Amt</b></td>
+          <td><b>Amt</b></td>
+        </tr>
+        ${items
+          .map((i, index) => {
+            const gstRate = Number(i.gst) || 0;
+            const gstAmount =
+              (Number(i.rate) * Number(i.quantity) * gstRate) / 100;
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${i.productName}</td>
+                <td>${Number(i.rate).toFixed(2)}</td>
+                <td>${i.quantity}</td>
+                <td>${gstRate.toFixed(2)}%</td>
+                <td>${gstAmount.toFixed(2)}</td>
+                <td>${Number(i.amount).toFixed(2)}</td>
+              </tr>
+            `;
+          })
+          .join("")}
       </table>
+
       <div class="line"></div>
+
       <div style="text-align:right">Total: ₹${Number(total).toFixed(2)}</div>
       <div style="text-align:right">Discount: ₹${Number(discount || 0).toFixed(
         2
@@ -262,7 +324,9 @@ const Invoice = () => {
       <div style="text-align:right;font-weight:bold">Net: ₹${Number(
         billTotal
       ).toFixed(2)}</div>
+
       <div class="line"></div>
+
       <div class="conditions">
         <b>நிபந்தனைகள்:</b><br>
         ❖ Sim Card, Memory Card, Battery போன்ற வாடிக்கையாளர்களின் சொந்த பொருட்களை கவனமாக கொண்டு செல்ல வேண்டும்.<br><br>
@@ -272,13 +336,16 @@ const Invoice = () => {
         ❖ மாறிய பொருள்களுக்கு மற்றும் தாமதமான பணியாளர்களுக்கு சிறிய தாமதம் ஏற்படலாம்.<br><br>
         ❖ பில் கொடுத்த பிறகே மட்டும் செல்போன் திரும்பப் பெறப்படும்.<br><br>
         ❖ Display, No Network IC, Touch Problem, Water Problem – <b>NO WARRANTY, NO CARENTY</b><br><br>
-        <><b>Customer Signature</b> ________________________ 
-        <span style="float:right;">For. ${companyName} </span></div>
+        <b>Customer Signature</b> ________________________ 
+        <span style="float:right;">For. ${companyName}</span>
       </div>
+
       <div class="line"></div>
       <div style="text-align:center">Thank you! Visit Again</div>
-      </body></html>
-    `;
+    </body>
+    </html>
+  `;
+
     const w = window.open("", "PRINT", "height=600,width=800");
     w.document.write(html);
     w.document.close();
@@ -345,6 +412,29 @@ const Invoice = () => {
             <option value="Cash">Cash</option>
             <option value="Gpay">GPay</option>
           </Select>
+
+          <Flex
+            align="center"
+            justify="center"
+            gap={2}
+            flex={{ base: "1 0 100%", md: "0 0 12%" }}
+            minW={{ base: "100%", md: "100px" }}
+          >
+            <Text
+              fontSize="sm"
+              color="gray.600"
+              fontWeight="500"
+              whiteSpace="nowrap"
+            >
+              GST
+            </Text>
+            <Switch
+              size="md"
+              colorScheme="blue"
+              isChecked={isGstEnabled}
+              onChange={(e) => setIsGstEnabled(e.target.checked)}
+            />
+          </Flex>
         </Flex>
       </Flex>
 
@@ -363,6 +453,7 @@ const Invoice = () => {
                 <Th>Product</Th>
                 <Th className="text-right">Qty</Th>
                 <Th className="text-right">Rate</Th>
+                <Th className="text-right">GST</Th>
                 <Th className="text-right">Amount</Th>
                 <Th textAlign="center">Action</Th>
               </Tr>
@@ -505,6 +596,7 @@ const Invoice = () => {
                     <Td className="text-right">
                       {Number(row.rate).toFixed(2)}
                     </Td>
+                    <Td className="text-right">{Number(row.gst)}</Td>
                     <Td className="text-right">
                       {Number(row.amount).toFixed(2)}
                     </Td>
@@ -555,6 +647,16 @@ const Invoice = () => {
             </Text>
           </Flex>
 
+          {/* ✅ GST (conditional display) */}
+          {isGstEnabled && (
+            <Flex justify="space-between" align="center" mb={2}>
+              <Text color="gray.700" fontWeight="500">
+                GST Total
+              </Text>
+              <Text color="gray.700">₹{Number(gstTotal).toFixed(2)}</Text>
+            </Flex>
+          )}
+
           {/* Discount */}
           <Flex justify="space-between" align="center" mb={3}>
             <Text color="gray.600">Discount</Text>
@@ -574,7 +676,7 @@ const Invoice = () => {
 
           <Divider my={3} />
 
-          {/* Total */}
+          {/* Net Amount */}
           <Flex justify="space-between" align="center" mb={2}>
             <Text fontWeight="semibold" color="gray.700">
               Net Amount ( ₹ )
