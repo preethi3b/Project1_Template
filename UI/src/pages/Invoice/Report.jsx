@@ -375,412 +375,503 @@ const Report = () => {
       {loading && (
         <Box className="loading-overlay">
           <Spinner size="xl" color="#625DF0" />
-          <Text>Retrieving records, please wait...</Text>
+          <Text className="loading-text">
+            Retrieving records, please wait...
+          </Text>
         </Box>
       )}
 
-      {/* MAIN LAYOUT (FULL PAGE) */}
-      <Flex height="100vh" overflow="hidden" bg="gray.50">
-        {/* ===========================
-          LEFT SIDE (Filters + Table)
-      ============================ */}
-        <Box
-          width={isRightPanelOpen ? "420px" : "100%"}
-          minWidth={isRightPanelOpen ? "420px" : "100%"}
-          maxWidth={isRightPanelOpen ? "420px" : "100%"}
-          height="100%"
-          overflowY="auto"
-          transition="all 0.3s ease"
-          p={4}
-          bg="white"
-          borderRight={isRightPanelOpen ? "1px solid #e5e7eb" : "none"}
+      {/* MAIN LAYOUT */}
+      <Box overflow="hidden" width="100%">
+        <Flex
+          align="stretch"
+          direction={{ base: "column", md: "row" }} // 👈 Stack on mobile
+          width="100%"
         >
-          {/* HEADER + FILTER BUTTON */}
-          <Flex justify="space-between" align="center" mb={4}>
-            <Text fontSize="xl" fontWeight="600">
-              Report
-            </Text>
+          {/* LEFT SIDE */}
+          <Box
+            width={{ base: "100%", md: isRightPanelOpen ? "420px" : "100%" }}
+            minWidth={{ base: "100%", md: isRightPanelOpen ? "420px" : "100%" }}
+            height="100%"
+            overflowY="auto"
+            transition="all 0.3s ease"
+            borderRight={{
+              base: "none",
+              md: isRightPanelOpen ? "1px solid #e5e7eb" : "none",
+            }}
+            className="page-left"
+            p={{ base: 3, md: 0 }}
+          >
+            {/* HEADER */}
+            <Flex
+              className="page-header"
+              direction={{ base: "column", sm: "row" }}
+              justify="space-between"
+              align={{ base: "flex-start", sm: "center" }}
+              wrap="wrap"
+              gap={2}
+            >
+              <Text className="page-title">Report</Text>
 
-            {/* FILTER BUTTON LIKE ZOHO */}
-            <Box position="relative">
-              <Flex justify="flex-end" align="center" gap={3}>
-                {/* DOWNLOAD BUTTON */}
-                <Menu>
-                  <MenuButton
-                    as={Button}
-                    leftIcon={<FiDownload />}
+              <Box
+                position="relative"
+                className="header-actions"
+                width={{ base: "100%", sm: "auto" }}
+              >
+                <Flex
+                  gap={2}
+                  wrap="wrap"
+                  justify={{ base: "flex-start", sm: "flex-end" }}
+                >
+                  {/* DOWNLOAD MENU */}
+                  <Menu>
+                    <MenuButton
+                      as={Button}
+                      leftIcon={<FiDownload />}
+                      size="sm"
+                      className="btn-secondary"
+                      width={{ base: "100%", sm: "auto" }}
+                    >
+                      Download
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem onClick={handleDownloadPDF}>
+                        PDF Format
+                      </MenuItem>
+                      <MenuItem onClick={handleDownloadXLSX}>
+                        XLSX Format
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+
+                  {/* FILTER BUTTON */}
+                  <Button
+                    leftIcon={<FiFilter size={18} />}
                     size="sm"
-                    bg="#E0F2FE"
-                    color="#0369A1"
-                    borderRadius="md"
-                    _hover={{ bg: "#BAE6FD" }}
+                    className="btn-primary"
+                    width={{ base: "100%", sm: "auto" }}
+                    onClick={() => setShowFilterMenu(!showFilterMenu)}
                   >
-                    Download
-                  </MenuButton>
+                    Filter
+                  </Button>
+                </Flex>
 
-                  <MenuList>
-                    <MenuItem onClick={() => handleDownloadPDF()}>
-                      PDF Format
-                    </MenuItem>
-                    <MenuItem onClick={() => handleDownloadXLSX()}>
-                      XLSX Format
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
+                {/* FILTER DROPDOWN */}
+                {showFilterMenu && (
+                  <Box
+                    className="filter-menu"
+                    position={{ base: "fixed", sm: "absolute" }}
+                    right={{ base: "50%", sm: "0" }}
+                    top={{ base: "50%", sm: "2.8rem" }}
+                    transform={{ base: "translate(50%, -50%)", sm: "none" }}
+                    zIndex="1000"
+                    bgColor="white"
+                    p={4}
+                    borderRadius="md"
+                    boxShadow="0 8px 24px rgba(0,0,0,0.2)"
+                    width={{ base: "90%", sm: "260px" }}
+                  >
+                    <Text className="filter-title" mb={2}>
+                      Filters
+                    </Text>
 
-                {/* EXISTING FILTER BUTTON */}
-                <Button
-                  leftIcon={<FiFilter size={18} />}
-                  size="sm"
-                  bg="#EEF2FF"
-                  color="#4338CA"
-                  onClick={() => setShowFilterMenu(!showFilterMenu)}
-                >
-                  Filter
-                </Button>
-              </Flex>
+                    <VStack spacing={3} align="stretch">
+                      <Input
+                        type="date"
+                        size="sm"
+                        value={formData.startDate || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            startDate: e.target.value,
+                          })
+                        }
+                      />
+                      <Input
+                        type="date"
+                        size="sm"
+                        value={formData.endDate || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, endDate: e.target.value })
+                        }
+                      />
+                      <Select
+                        size="sm"
+                        value={formData.type || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, type: e.target.value })
+                        }
+                      >
+                        <option value="">Select Type</option>
+                        <option value="invoice">Invoice</option>
+                        <option value="service">Service</option>
+                      </Select>
 
-              {/* FILTER DROPDOWN MENU */}
-              {showFilterMenu && (
-                <Box
-                  position="absolute"
-                  right="0"
-                  mt={2}
-                  w="260px"
-                  bg="white"
-                  boxShadow="lg"
-                  p={4}
-                  borderRadius="md"
-                  border="1px solid #e5e7eb"
-                  zIndex={20}
-                >
-                  <Text fontWeight="600" mb={2}>
-                    Filters
-                  </Text>
+                      <Input
+                        size="sm"
+                        placeholder="Total Amount"
+                        isReadOnly
+                        value={services}
+                      />
 
-                  <VStack spacing={3} align="stretch">
-                    <Input
-                      type="date"
-                      size="sm"
-                      value={formData.startDate || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, startDate: e.target.value })
-                      }
-                    />
+                      <Button
+                        size="sm"
+                        className="btn-primary"
+                        leftIcon={<FiSearch />}
+                        onClick={() => {
+                          handeleSearch();
+                          setShowFilterMenu(false);
+                        }}
+                      >
+                        Search
+                      </Button>
 
-                    <Input
-                      type="date"
-                      size="sm"
-                      value={formData.endDate || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, endDate: e.target.value })
-                      }
-                    />
+                      <Button
+                        size="sm"
+                        className="btn-secondary"
+                        onClick={() => {
+                          handleOpen();
+                          setShowFilterMenu(false);
+                        }}
+                      >
+                        Daily Report
+                      </Button>
+                    </VStack>
+                  </Box>
+                )}
+              </Box>
+            </Flex>
 
-                    <Select
-                      size="sm"
-                      value={formData.type || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, type: e.target.value })
-                      }
-                    >
-                      <option value="">Select Type</option>
-                      <option value="invoice">Invoice</option>
-                      <option value="service">Service</option>
-                    </Select>
+            {/* RECENT INVOICES TABLE */}
+            <Card className="table-card" mt={3}>
+              <CardHeader borderBottomWidth="1px" borderColor="gray.200">
+                <Text className="table-title">Recent Invoices</Text>
+              </CardHeader>
 
-                    <Input
-                      size="sm"
-                      placeholder="Total Amount"
-                      isReadOnly
-                      value={services}
-                    />
-
-                    <Button
-                      size="sm"
-                      colorScheme="purple"
-                      leftIcon={<FiSearch />}
-                      onClick={() => {
-                        handeleSearch();
-                        setShowFilterMenu(false);
-                      }}
-                    >
-                      Search
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      colorScheme="blue"
-                      onClick={() => {
-                        handleOpen();
-                        setShowFilterMenu(false);
-                      }}
-                    >
-                      Daily Report
-                    </Button>
-                  </VStack>
-                </Box>
-              )}
-            </Box>
-          </Flex>
-
-          {/* =======================
-            RECENT INVOICES TABLE
-        ======================== */}
-          <Card>
-            <CardHeader borderBottomWidth="1px" borderColor="gray.200">
-              <Text fontWeight="600">Recent Invoices</Text>
-            </CardHeader>
-
-            <CardBody px={0}>
-              <Box>
-                {/* WHEN RIGHT PANEL OPEN → SHOW COMPACT LIST */}
-                {isRightPanelOpen ? (
-                  <Table size="sm">
-                    <Tbody>
-                      {invoiceData.map((item) => (
-                        <Tr
-                          key={item.invoiceNo}
-                          onClick={() => handleView(item.invoiceNo)}
-                          style={{
-                            cursor: "pointer",
-                            background:
-                              selectedInvoice?.invoiceNo === item.invoiceNo
-                                ? "#eef2ff"
-                                : "transparent",
-                            borderLeft:
-                              selectedInvoice?.invoiceNo === item.invoiceNo
-                                ? "3px solid #4f46e5"
-                                : "3px solid transparent",
-                          }}
-                        >
-                          <Td>
-                            <Text
-                              fontWeight="600"
-                              fontSize="sm"
-                              color="blue.600"
-                            >
-                              {item.customerName}
-                            </Text>
-
-                            <Flex justify="space-between" mt={1}>
-                              <Text fontSize="xs" color="gray.600">
-                                {item.invoiceNo}
-                              </Text>
-                              <Text fontSize="sm" fontWeight="600">
-                                ₹{item.amount}
-                              </Text>
-                            </Flex>
-
-                            <Text fontSize="xs" color="gray.500">
-                              {item.cre_date}
-                            </Text>
-                          </Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                ) : (
-                  /* FULL TABLE WHEN RIGHT PANEL CLOSED */
-                  <Table size="sm">
-                    <Thead>
-                      <Tr>
-                        <Th>Invoice No</Th>
-                        <Th>Name</Th>
-                        <Th>Mobile</Th>
-                        <Th>Amount</Th>
-                        <Th>Discount</Th>
-                        <Th>Received</Th>
-                        <Th>Date</Th>
-                      </Tr>
-                    </Thead>
-
-                    <Tbody>
-                      {invoiceData.map((item) => (
-                        <Tr key={item.invoiceNo}>
-                          <Td
-                            onClick={() => handleView(item.invoiceNo)}
-                            style={{ cursor: "pointer", color: "#4f46e5" }}
-                          >
-                            {item.invoiceNo}
-                          </Td>
-
-                          <Td
+              <CardBody px={0}>
+                <Box className="table-scroll" minH="300px" overflowX="auto">
+                  {isRightPanelOpen ? (
+                    <Table size="sm" className="table">
+                      <Tbody>
+                        {invoiceData.map((item) => (
+                          <Tr
+                            key={item.invoiceNo}
                             onClick={() => handleView(item.invoiceNo)}
                             style={{
                               cursor: "pointer",
-                              color: "#4f46e5",
-                              fontWeight: 600,
+                              backgroundColor:
+                                selectedInvoice?.invoiceNo === item.invoiceNo
+                                  ? "rgba(98, 93, 240, 0.08)"
+                                  : "transparent",
+                              borderLeft:
+                                selectedInvoice?.invoiceNo === item.invoiceNo
+                                  ? "3px solid #625DF0"
+                                  : "3px solid transparent",
+                              transition: "all 0.2s ease",
                             }}
                           >
-                            {item.customerName}
-                          </Td>
-
-                          <Td>{item.mobileNumber}</Td>
-                          <Td>₹{item.amount}</Td>
-                          <Td>{item.discount}</Td>
-                          <Td>{item.total}</Td>
-                          <Td>{item.cre_date}</Td>
+                            <Td>
+                              <Text
+                                color="#625DF0"
+                                textDecoration="underline"
+                                cursor="pointer"
+                                _hover={{
+                                  color: "#5148d8",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {item.customerName}
+                              </Text>
+                              <Flex justify="space-between" mt={1}>
+                                <Text className="sub-id">{item.invoiceNo}</Text>
+                                <Text className="amount">₹{item.amount}</Text>
+                              </Flex>
+                              <Text className="sub-date">{item.cre_date}</Text>
+                            </Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  ) : (
+                    <Table size="sm" className="table">
+                      <Thead>
+                        <Tr>
+                          <Th>Invoice No</Th>
+                          <Th>Name</Th>
+                          <Th>Mobile</Th>
+                          <Th>Amount</Th>
+                          <Th>Discount</Th>
+                          <Th>Received</Th>
+                          <Th>Date</Th>
                         </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                )}
-              </Box>
-            </CardBody>
-          </Card>
-        </Box>
-
-        {/* ===========================
-          RIGHT SIDE INVOICE PREVIEW
-      ============================ */}
-        {isRightPanelOpen && (
-          <Box
-            flex="1"
-            height="100%"
-            overflowY="auto"
-            bg="white"
-            p={6}
-            borderLeft="1px solid #e5e7eb"
-          >
-            {/* TITLE BAR */}
-            <Flex justify="space-between" align="center" mb={5}>
-              <Heading size="md">Invoice #</Heading>
-              <Button size="sm" onClick={() => setRightPanelOpen(false)}>
-                Close
-              </Button>
-            </Flex>
-            {showDailyReport ? (
-              <Table variant="simple" size="sm" border="1px solid #e5e7eb">
-                <Thead>
-                  <Tr>
-                    <Th>Metric</Th>
-                    <Th isNumeric>Value</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  <Tr>
-                    <Td>Number of Invoices</Td>
-                    <Td isNumeric>{report?.invoiceCount}</Td>
-                  </Tr>
-
-                  <Tr>
-                    <Td>Total Invoice Sale</Td>
-                    <Td isNumeric>₹{report?.totalInvoiceSale}</Td>
-                  </Tr>
-
-                  <Tr>
-                    <Td>Delivered Services</Td>
-                    <Td isNumeric>{report?.deliveredCount}</Td>
-                  </Tr>
-
-                  <Tr>
-                    <Td>Total Delivered Cost</Td>
-                    <Td isNumeric>₹{report?.totalDeliveredCost}</Td>
-                  </Tr>
-
-                  <Tr>
-                    <Td>Received Services</Td>
-                    <Td isNumeric>{report?.receivedCount}</Td>
-                  </Tr>
-
-                  <Tr>
-                    <Td>Today's Total Sale</Td>
-                    <Td isNumeric>₹{report?.todayTotalSale}</Td>
-                  </Tr>
-                </Tbody>
-                <Tfoot>
-                  <Tr bg="gray.100">
-                    <Th colSpan={3}></Th>
-                    <Th fontWeight="700">₹{sumAmount}</Th>
-                    <Th></Th>
-                    <Th></Th>
-                    <Th></Th>
-                  </Tr>
-                </Tfoot>
-              </Table>
-            ) : (
-              <>
-                {/* ACTION BUTTONS */}
-                <Flex gap={3} mb={6}>
-                  <Button size="sm" colorScheme="blue">
-                    Edit
-                  </Button>
-                  <Button size="sm" colorScheme="green">
-                    Share
-                  </Button>
-                  <Button size="sm" colorScheme="purple">
-                    PDF/Print
-                  </Button>
-                  <Button size="sm" colorScheme="orange">
-                    Record Payment
-                  </Button>
-                  <Button size="sm" colorScheme="red" onClick={handleDelete}>
-                    Delete
-                  </Button>
-                </Flex>
-
-                {/* CUSTOMER DETAILS */}
-                <Heading size="sm" mb={2}>
-                  Customer
-                </Heading>
-                <Text>{selectedInvoice.customerName}</Text>
-                <Text>{selectedInvoice.mobile}</Text>
-
-                {/* PRODUCT TABLE */}
-                <Box mt={5}>
-                  <Table size="sm">
-                    <Thead>
-                      <Tr>
-                        <Th>Product</Th>
-                        <Th>Qty</Th>
-                        <Th>Rate</Th>
-                        <Th>Amount</Th>
-                      </Tr>
-                    </Thead>
-
-                    <Tbody>
-                      {invoiceItems.map((item, index) => (
-                        <Tr key={index}>
-                          <Td>{item.product_name}</Td>
-                          <Td>{item.quantity}</Td>
-                          <Td>{formatCurrency(item.rate)}</Td>
-                          <Td>{formatCurrency(item.amount)}</Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
+                      </Thead>
+                      <Tbody>
+                        {invoiceData.map((item) => (
+                          <Tr
+                            key={item.invoiceNo}
+                            onClick={() => handleView(item.invoiceNo)}
+                            style={{
+                              backgroundColor:
+                                selectedInvoice?.invoiceNo === item.invoiceNo
+                                  ? "rgba(98, 93, 240, 0.08)"
+                                  : "transparent",
+                              borderLeft:
+                                selectedInvoice?.invoiceNo === item.invoiceNo
+                                  ? "3px solid #625DF0"
+                                  : "3px solid transparent",
+                              transition: "all 0.2s ease",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <Td>
+                              <Text
+                                color="#625DF0"
+                                textDecoration="underline"
+                                cursor="pointer"
+                                _hover={{
+                                  color: "#5148d8",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {item.invoiceNo}
+                              </Text>
+                            </Td>
+                            <Td>
+                              <Text
+                                color="#625DF0"
+                                textDecoration="underline"
+                                cursor="pointer"
+                                _hover={{
+                                  color: "#5148d8",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {item.customerName}
+                              </Text>
+                            </Td>
+                            <Td>{item.mobileNumber}</Td>
+                            <Td>₹{item.amount}</Td>
+                            <Td>{item.discount}</Td>
+                            <Td>{item.total}</Td>
+                            <Td>{item.cre_date}</Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  )}
                 </Box>
-
-                {/* TOTALS */}
-                <Flex direction="column" align="flex-end" mt={6}>
-                  <Flex justify="space-between" width="260px">
-                    <Text>Subtotal:</Text>
-                    <Text>{formatCurrency(subtotal)}</Text>
-                  </Flex>
-
-                  <Flex justify="space-between" width="260px">
-                    <Text>Discount:</Text>
-                    <Text>- {formatCurrency(invoiceDiscount)}</Text>
-                  </Flex>
-
-                  <Box
-                    borderTop="2px solid #cdd1f5"
-                    width="260px"
-                    mt={2}
-                    pt={2}
-                  >
-                    <Flex justify="space-between" fontWeight="700">
-                      <Text>Total:</Text>
-                      <Text>{formatCurrency(invoiceTotal)}</Text>
-                    </Flex>
-                  </Box>
-                </Flex>
-              </>
-            )}
+              </CardBody>
+            </Card>
           </Box>
-        )}
-      </Flex>
+
+          {/* RIGHT PANEL */}
+          {isRightPanelOpen && (
+            <Box
+              flex="1"
+              height={{ base: "auto", md: "100%" }}
+              overflowY="auto"
+              bg="white"
+              p={6}
+              className="right-panel"
+              sx={{ scrollBehavior: "smooth", alignSelf: "stretch" }}
+              borderTop={{ base: "1px solid #e5e7eb", md: "none" }}
+            >
+              <Flex
+                className="page-header"
+                justify="space-between"
+                align="center"
+                mb={4}
+                wrap="wrap"
+              >
+                <Text className="page-title">
+                  Invoice #{selectedInvoice?.invoiceNo}
+                </Text>
+                <Button
+                  size="sm"
+                  className="btn-cancel"
+                  onClick={() => setRightPanelOpen(false)}
+                >
+                  Close
+                </Button>
+              </Flex>
+
+              {showDailyReport ? (
+                <Table variant="simple" size="sm" className="table">
+                  <Thead>
+                    <Tr>
+                      <Th>Metric</Th>
+                      <Th isNumeric>Value</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    <Tr>
+                      <Td>Number of Invoices</Td>
+                      <Td isNumeric>{report?.invoiceCount}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Total Invoice Sale</Td>
+                      <Td isNumeric>₹{report?.totalInvoiceSale}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Delivered Services</Td>
+                      <Td isNumeric>{report?.deliveredCount}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Total Delivered Cost</Td>
+                      <Td isNumeric>₹{report?.totalDeliveredCost}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Received Services</Td>
+                      <Td isNumeric>{report?.receivedCount}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Today's Total Sale</Td>
+                      <Td isNumeric>₹{report?.todayTotalSale}</Td>
+                    </Tr>
+                  </Tbody>
+                </Table>
+              ) : (
+                <>
+                  <Flex
+                    gap={2}
+                    mb={4}
+                    flexWrap="wrap"
+                    justify={{ base: "flex-start", md: "flex-start" }}
+                  >
+                    <Button
+                      size="sm"
+                      style={{
+                        backgroundColor: "#625DF0",
+                        color: "#fff",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      style={{
+                        backgroundColor: "#E0E7FF",
+                        color: "#4338CA",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      Share
+                    </Button>
+                    <Button
+                      size="sm"
+                      style={{
+                        backgroundColor: "#E0F2FE",
+                        color: "#0369A1",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      PDF/Print
+                    </Button>
+                    <Button
+                      size="sm"
+                      style={{
+                        backgroundColor: "#E0F2FE",
+                        color: "#0369A1",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      Record Payment
+                    </Button>
+                    <Button
+                      size="sm"
+                      style={{
+                        backgroundColor: "#F3F4F6",
+                        color: "#333",
+                        borderRadius: "8px",
+                      }}
+                      onClick={handleDelete}
+                    >
+                      Delete
+                    </Button>
+                  </Flex>
+
+                  <Box>
+                    <Heading size="sm" mb={2}>
+                      Customer
+                    </Heading>
+                    <Text>{selectedInvoice.customerName}</Text>
+                    <Text>{selectedInvoice.mobile}</Text>
+                  </Box>
+
+                  <Box mt={5} overflowX="auto">
+                    <Table size="sm" className="table" minW="480px">
+                      <Thead>
+                        <Tr>
+                          <Th>Product</Th>
+                          <Th>Qty</Th>
+                          <Th>Rate</Th>
+                          <Th>Amount</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {invoiceItems.map((item, index) => (
+                          <Tr key={index}>
+                            <Td>{item.product_name}</Td>
+                            <Td>{item.quantity}</Td>
+                            <Td>{formatCurrency(item.rate)}</Td>
+                            <Td>{formatCurrency(item.amount)}</Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  </Box>
+
+                  <Flex
+                    direction="column"
+                    align={{ base: "stretch", sm: "flex-end" }}
+                    mt={6}
+                    className="total-summary"
+                    width="100%"
+                    px={{ base: 2, sm: 0 }}
+                  >
+                    <Flex
+                      justify="space-between"
+                      width={{ base: "100%", sm: "260px" }}
+                      mb={1}
+                    >
+                      <Text fontSize={{ base: "sm", sm: "md" }}>Subtotal:</Text>
+                      <Text fontSize={{ base: "sm", sm: "md" }}>
+                        {formatCurrency(subtotal)}
+                      </Text>
+                    </Flex>
+
+                    <Flex
+                      justify="space-between"
+                      width={{ base: "100%", sm: "260px" }}
+                      mb={1}
+                    >
+                      <Text fontSize={{ base: "sm", sm: "md" }}>Discount:</Text>
+                      <Text fontSize={{ base: "sm", sm: "md" }}>
+                        - {formatCurrency(invoiceDiscount)}
+                      </Text>
+                    </Flex>
+
+                    <Box
+                      borderTop="2px solid #cdd1f5"
+                      width={{ base: "100%", sm: "260px" }}
+                      mt={2}
+                      pt={2}
+                    >
+                      <Flex justify="space-between" fontWeight="700">
+                        <Text fontSize={{ base: "sm", sm: "md" }}>Total:</Text>
+                        <Text fontSize={{ base: "sm", sm: "md" }}>
+                          {formatCurrency(invoiceTotal)}
+                        </Text>
+                      </Flex>
+                    </Box>
+                  </Flex>
+                </>
+              )}
+            </Box>
+          )}
+        </Flex>
+      </Box>
     </>
   );
 };
